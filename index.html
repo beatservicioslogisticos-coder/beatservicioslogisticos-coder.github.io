@@ -477,10 +477,12 @@ function renderAgentes(){
 }
 
 /* ---------- Prospectos ---------- */
+var MSG_WA_SEG='Hola, buen día. Soy Blanca Dávila de BEAT Servicios Logísticos, fabricantes de cajas de cartón corrugado en Monterrey. Les enviamos un correo con nuestra propuesta de empaque. ¿Con quién podemos tratar temas de empaque o compras? Con gusto les cotizamos.';
+var MSG_WA_NUEVO='Hola, buen día. Soy Blanca Dávila de BEAT Servicios Logísticos, fabricantes de cajas de cartón corrugado a la medida en Monterrey. ¿Con quién podemos tratar temas de empaque o compras? Con gusto les cotizamos: pueden mandarnos las medidas o una foto de la caja que usan.';
 function loadLeads(){return call('uiLeads',CODE).then(function(l){LEADS=l;return l})}
 var LF={q:'',estado:'Activos'};
 function renderLeads(){
-  var est=['Activos','Mensaje listo','Contactado','Respondió','Interesado','Cliente','Todos'];
+  var est=['Activos','📱 Con WhatsApp','Mensaje listo','Contactado','Respondió','Interesado','Cliente','Todos'];
   var h='<input placeholder="Buscar empresa o giro…" value="'+esc(LF.q)+'" oninput="LF.q=this.value;drawLeads()"><div class="chips" style="margin:10px 0">'+
     est.map(function(e){return '<span class="chip '+(LF.estado===e?'on':'')+'" onclick="LF.estado=\''+e+'\';renderLeads()">'+e+'</span>'}).join('')+'</div><div id="leadlist"></div>';
   ($('leads-box')||$('v-prospectos')).innerHTML=h; drawLeads();
@@ -489,12 +491,23 @@ function drawLeads(){
   var act=['Nuevo','Mensaje listo','Contactado','Respondió','Interesado'];
   var q=LF.q.toLowerCase();
   var L=LEADS.filter(function(l){
-    var okE=LF.estado==='Todos'||(LF.estado==='Activos'?act.indexOf(l.estado)>=0:l.estado===LF.estado);
+    var okE=LF.estado==='Todos'||(LF.estado==='📱 Con WhatsApp'?(l.wa&&act.indexOf(l.estado)>=0):LF.estado==='Activos'?act.indexOf(l.estado)>=0:l.estado===LF.estado);
     return okE&&(!q||(String(l.empresa)+' '+l.giro).toLowerCase().indexOf(q)>=0);
   });
   var order={Alta:0,Media:1,Baja:2}; var rk=function(x){return x in order?order[x]:3};L.sort(function(a,b){return rk(a.prioridad)-rk(b.prioridad)});
+  if(LF.estado==='📱 Con WhatsApp'){
+    $('leadlist').innerHTML='<p class="m" style="margin:0 0 10px">Empresas que publican su WhatsApp en su página. Toca <b>Enviar WhatsApp</b> (el mensaje ya va escrito) y luego <b>Ya lo mandé</b> para que quede registrado.</p>'+
+      (L.length?L.map(function(l){
+        var link='https://wa.me/52'+l.wa+'?text='+encodeURIComponent(l.estado==='Contactado'?MSG_WA_SEG:MSG_WA_NUEVO);
+        return '<div class="lead"><div class="top"><div><div class="n">'+esc(l.empresa)+'</div><div class="m">'+esc(l.giro)+' · '+esc(l.municipio||'')+' · '+esc(l.estado)+'</div></div><span class="pill p-'+esc(l.prioridad)+'">'+esc(l.prioridad||'')+'</span></div>'+
+          '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px"><a class="btn" style="background:#1A7F4B;color:#fff;text-decoration:none" target="_blank" href="'+link+'">💬 Enviar WhatsApp</a>'+
+          '<button class="btn sec" onclick="quick(\''+l.id+'\',\'enviado\')">✓ Ya lo mandé</button>'+
+          '<button class="btn sec" onclick="quick(\''+l.id+'\',\'respuesta\')">Contestó</button></div></div>';
+      }).join(''):'<div class="empty">Sin prospectos con WhatsApp en este momento.</div>');
+    return;
+  }
   $('leadlist').innerHTML=L.length?L.map(function(l){
-    var wa=l.tel?'https://wa.me/52'+String(l.tel).replace(/\D/g,'').slice(-10)+(l.mensaje?'?text='+encodeURIComponent(l.mensaje):''):'';
+    var wa=l.wa?'https://wa.me/52'+l.wa+'?text='+encodeURIComponent(l.estado==='Contactado'?MSG_WA_SEG:MSG_WA_NUEVO):'';
     return '<div class="lead"><div class="top"><div><div class="n">'+esc(l.empresa)+'</div><div class="m">'+esc(l.giro)+' · '+esc(l.municipio||'')+' · '+esc(l.estado)+'</div></div><span class="pill p-'+esc(l.prioridad)+'">'+esc(l.prioridad||'')+'</span></div>'+
       '<div class="links" style="margin-top:8px">'+(l.tel?'<a href="tel:'+esc(l.tel)+'">📞 Llamar</a>':'')+(wa?'<a target="_blank" href="'+wa+'">💬 WhatsApp</a>':'')+(l.email?'<a href="mailto:'+esc(l.email)+'">✉️ Correo</a>':'')+(l.web?'<a target="_blank" href="'+esc(l.web)+'">🌐 Web</a>':'')+'</div>'+
       '<details><summary>Ver ficha completa</summary>'+ficha(l)+'</details>'+
